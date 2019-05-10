@@ -13,22 +13,25 @@ var mydb = mysql.createConnection({
   });
 
 var ipAddresses=[];
+var linkNames=[];
 
 mydb.connect(function(err) {
     if (err) throw err;
     console.log("Connected to Database!");    
 
 });
-mydb.query("SELECT ip_addr FROM dumps.mtr", function (err, result, fields) {
+mydb.query("SELECT ip_addr,link_name FROM dumps.mtr", function (err, result, fields) {
     if (err) throw err;
-    // console.log("result: ",result);
+     console.log("result: ",result);
     // console.log("No of Rows: ",result.affectedRows);
     Object.keys(result).forEach(function(key) {
         var row = result[key];
         ipAddresses.push(row.ip_addr);
+        linkNames.push(row.link_name);
         // console.log(typeof ipAddresses);
     });
-    console.log("IP ADDRESSES: ",ipAddresses);        
+    console.log("IP ADDRESSES: ",ipAddresses); 
+    console.log("LINK NAMES: ",linkNames);        
 });
 
 mydb.end(function(err) {
@@ -77,7 +80,9 @@ wsServer.on('request', function(request) {
     var process;
     var timeout;
     console.log((new Date()) + ' Connection accepted.');
-    var outjsonobj={"command":"START","value":" "}
+    var outjsonobj={"command":"START_IP","value":ipAddresses}
+    connection.sendUTF(JSON.stringify(outjsonobj));
+    var outjsonobj={"command":"START_LINK","value":linkNames}
     connection.sendUTF(JSON.stringify(outjsonobj));
     connection.on('message', function(message) {
         if (message.type === 'utf8') {

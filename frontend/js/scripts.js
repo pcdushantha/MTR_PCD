@@ -2,6 +2,8 @@
    //  alert("WebSocket is supported by your Browser!");
     
     // Let us open a web socket
+    var ipAddresses;
+    var linkNames;
     var status = "STOPPED";
     var displayArray =[];
     var displayTable = document.getElementById("displayTable");
@@ -25,8 +27,17 @@
       if(injsonobj.command === "STOP"){
          status = "STOPPED"; 
       }
-      else if(injsonobj.command === "START"){
+      else if(injsonobj.command === "START_IP"){
          status = "STOPPED"; 
+         //console.log("IP ADDRESSES:", injsonobj.value)
+         ipAddresses=injsonobj.value;
+         console.log("IP ADDRESSES:", ipAddresses);
+      }
+      else if(injsonobj.command === "START_LINK"){
+         status = "STOPPED"; 
+         //console.log("IP ADDRESSES:", injsonobj.value)
+         linkNames=injsonobj.value;
+         console.log("LINK NAMES:", linkNames);
       }
       else if(injsonobj.command === "TIMEOUT"){
          alert("!! TIMEOUT !!");
@@ -150,7 +161,13 @@ function ServiceStart() {
    var cell7 = row.insertCell(6);
    var cell8 = row.insertCell(7);
    cell1.innerHTML = recvArray[0];
-   cell2.innerHTML = recvArray[1];
+   if (ipAddresses.includes(recvArray[1])){
+      cell2.innerHTML = "<span style='color:#E74C3C;font-weight:bold'  >" + recvArray[1]+"   "+linkNames[ipAddresses.indexOf(recvArray[1])] +"</span>" ;
+   }
+   else{
+      cell2.innerHTML = recvArray[1];
+   }
+   
    cell3.innerHTML = recvArray[2];
    cell4.innerHTML = recvArray[3];
    cell5.innerHTML = recvArray[4];
