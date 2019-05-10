@@ -15,11 +15,11 @@ var mydb = mysql.createConnection({
 var ipAddresses=[];
 var linkNames=[];
 
-mydb.connect(function(err) {
-    if (err) throw err;
-    console.log("Connected to Database!");    
+// mydb.connect(function(err) {
+//     if (err) throw err;
+//     console.log("Connected to Database!");    
 
-});
+// });
 mydb.query("SELECT ip_addr,link_name FROM dumps.mtr", function (err, result, fields) {
     if (err) throw err;
      console.log("result: ",result);
@@ -34,10 +34,10 @@ mydb.query("SELECT ip_addr,link_name FROM dumps.mtr", function (err, result, fie
     console.log("LINK NAMES: ",linkNames);        
 });
 
-mydb.end(function(err) {
-    if (err) throw err;
-    console.log("Disconnected from Database!");
-});
+// mydb.end(function(err) {
+//     if (err) throw err;
+//     console.log("Disconnected from Database!");
+// });
 
 var server = http.createServer(function(request, response) {
     console.log((new Date()) + ' Received request for ' + request.url);
@@ -137,8 +137,19 @@ wsServer.on('request', function(request) {
                 clearTimeout(timeout);
                 process = undefined                                
             }
-            else if(injsonobj.command === 'SAVE'  && process != undefined){
-                // save data to the database
+            else if(injsonobj.command === 'SAVE'){
+                
+                var sql = "INSERT INTO dumps.mtr_save (`name`, `data`) VALUES(?,?)";  
+               
+                var today = new Date();
+                var date = today.getFullYear()+'-'+(today.getMonth()+1)+'-'+today.getDate();
+                var time = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
+                var dateTime = date+' '+time;
+                mydb.query(sql,[dateTime,JSON.stringify(injsonobj.value)], function (err, result) {
+                    if (err) throw err;
+                    console.log("Number of records inserted: " + result.affectedRows);    
+                });               
+                
             }             
         }
         else if (message.type === 'binary') {

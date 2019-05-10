@@ -116,8 +116,21 @@ function ServiceStart() {
    
  }
 
+ function SavetoDB() {   
+   if(ws.readyState != 1){
+      console.log('Server not available !');
+      alert("Server not available !"); 
+   } 
+   else{
+      var jsonobj={"command":"SAVE","value":displayArray}            
+      ws.send(JSON.stringify(jsonobj));
+   } 
+     
+   
+ }
  document.getElementById("start_button").onclick = ServiceStart;
  document.getElementById("stop_button").onclick = ServiceStop;
+ document.getElementById("save_button").onclick = SavetoDB;
 
  function updateTable(recvArray){
   // console.log(recvArray);
