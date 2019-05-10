@@ -17,18 +17,24 @@
      
     ws.onmessage = function (evt) { 
       status = "RUNNING";
-      var received_msg = evt.data;
-      console.log(received_msg);
+      // var received_msg = evt.data;
+      // console.log(received_msg);
        //alert("Message is received...");       
        //received_msg.trim();
-      if(received_msg === "STOP"){
+      var injsonobj = JSON.parse(evt.data);
+      if(injsonobj.command === "STOP"){
          status = "STOPPED"; 
       }
-      else if(received_msg === "TIMEOUT"){
+      else if(injsonobj.command === "START"){
+         status = "STOPPED"; 
+      }
+      else if(injsonobj.command === "TIMEOUT"){
          alert("!! TIMEOUT !!");
       }
-      else{
-         var webSocketArray = received_msg.split("\n");
+      else if(injsonobj.command === "DATA"){
+         var data = injsonobj.value;
+         console.log(data);
+         var webSocketArray = data.split("\n");
          var datalength = webSocketArray.length;
          // console.log("Size of received data lines: ", datalength-1 );
          for(var i=0; i<datalength; i++ ){

@@ -2,7 +2,39 @@ const timeoutms=60000;
 const childProcess = require('child_process');
 var WebSocketServer = require('websocket').server;
 var http = require('http');
-const utf8 = require('utf8');
+//const utf8 = require('utf8');
+var mysql = require('mysql');
+
+// mysql connection
+var mydb = mysql.createConnection({
+    host: "127.0.0.1",
+    user: "mtr",
+    password: "root"    
+  });
+
+var ipAddresses=[];
+
+mydb.connect(function(err) {
+    if (err) throw err;
+    console.log("Connected to Database!");    
+
+});
+mydb.query("SELECT ip_addr FROM dumps.mtr", function (err, result, fields) {
+    if (err) throw err;
+    // console.log("result: ",result);
+    // console.log("No of Rows: ",result.affectedRows);
+    Object.keys(result).forEach(function(key) {
+        var row = result[key];
+        ipAddresses.push(row.ip_addr);
+        // console.log(typeof ipAddresses);
+    });
+    console.log("IP ADDRESSES: ",ipAddresses);        
+});
+
+mydb.end(function(err) {
+    if (err) throw err;
+    console.log("Disconnected from Database!");
+});
 
 var server = http.createServer(function(request, response) {
     console.log((new Date()) + ' Received request for ' + request.url);
@@ -45,15 +77,16 @@ wsServer.on('request', function(request) {
     var process;
     var timeout;
     console.log((new Date()) + ' Connection accepted.');
-    connection.sendUTF("STOP");
+    var outjsonobj={"command":"START","value":" "}
+    connection.sendUTF(JSON.stringify(outjsonobj));
     connection.on('message', function(message) {
         if (message.type === 'utf8') {
             console.log('Received Message: ' + message.utf8Data);
             
-            var jsonobj = JSON.parse(message.utf8Data);
-            if(jsonobj.command === 'START' && process === undefined){
+            var injsonobj = JSON.parse(message.utf8Data);
+            if(injsonobj.command === 'START' && process === undefined){
 
-                process = childProcess.spawn('mtr',['-4','-p','-n',jsonobj.value]); 
+                process = childProcess.spawn('mtr',['-4','-p','-n',injsonobj.value]); 
                 
                 timeout=setTimeout(function(){
                     if(process != undefined){
@@ -61,15 +94,18 @@ wsServer.on('request', function(request) {
                         process.stdin.end();
                         process.stdout.end();
                         process.kill('SIGINT');
-                        process = undefined;
-                        connection.sendUTF("TIMEOUT");
+                        process = undefined;                        
+                        var outjsonobj={"command":"TIMEOUT","value":" "}
+                        connection.sendUTF(JSON.stringify(outjsonobj));
                     }
                     
                 }, timeoutms);
 
                 process.stdout.on('data', function (data) {
                     console.log('stdout: ' + data); 
-                    connection.sendUTF(data);    
+                    //connection.sendUTF(data);
+                    var outjsonobj={"command":"DATA","value":String(data)}
+                    connection.sendUTF(JSON.stringify(outjsonobj));    
                 });
 
                 process.stderr.on('data', function (data) {    
@@ -82,20 +118,21 @@ wsServer.on('request', function(request) {
                     console.log('Child process exit with code: ' + code);
                     process = undefined;
                     clearTimeout(timeout);
-                    connection.sendUTF("STOP");
+                    var outjsonobj={"command":"STOP","value":" "}
+                    connection.sendUTF(JSON.stringify(outjsonobj)); 
                 });
 
                 console.log('Child Process');
 
             }
-            else if(jsonobj.command === 'STOP'  && process != undefined){               
+            else if(injsonobj.command === 'STOP'  && process != undefined){               
                // process.stdin.end();
                 //process.stdout.end();
                 process.kill('SIGINT');
                 clearTimeout(timeout);
                 process = undefined                                
             }
-            else if(jsonobj.command === 'SAVE'  && process != undefined){
+            else if(injsonobj.command === 'SAVE'  && process != undefined){
                 // save data to the database
             }             
         }
