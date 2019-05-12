@@ -25,6 +25,7 @@ mydb.query("SELECT ip_addr,link_name FROM dumps.mtr", function (err, result, fie
      console.log("result: ",result);
     // console.log("No of Rows: ",result.affectedRows);
     Object.keys(result).forEach(function(key) {
+        // console.log("KEY:",key);
         var row = result[key];
         ipAddresses.push(row.ip_addr);
         linkNames.push(row.link_name);
@@ -89,73 +90,131 @@ wsServer.on('request', function(request) {
             console.log('Received Message: ' + message.utf8Data);
             
             var injsonobj = JSON.parse(message.utf8Data);
-            if(injsonobj.command === 'START' && process === undefined){
+            
+            switch(injsonobj.command){
+                case 'START':
+                  // code block
+                  if(process === undefined){
 
-                process = childProcess.spawn('mtr',['-4','-p','-n',injsonobj.value]); 
-                
-                timeout=setTimeout(function(){
-                    if(process != undefined){
-                        console.log('Timeout kill');
-                        process.stdin.end();
-                        process.stdout.end();
-                        process.kill('SIGINT');
-                        process = undefined;                        
-                        var outjsonobj={"command":"TIMEOUT","value":" "}
-                        connection.sendUTF(JSON.stringify(outjsonobj));
+                    process = childProcess.spawn('mtr',['-4','-p','-n',injsonobj.value]); 
+                    
+                    timeout=setTimeout(function(){
+                        if(process != undefined){
+                            console.log('Timeout kill');
+                            process.stdin.end();
+                            process.stdout.end();
+                            process.kill('SIGINT');
+                            process = undefined;                        
+                            var outjsonobj={"command":"TIMEOUT","value":" "}
+                            connection.sendUTF(JSON.stringify(outjsonobj));
+                        }
+                        
+                    }, timeoutms);
+    
+                    process.stdout.on('data', function (data) {
+                        console.log('stdout: ' + data); 
+                        //connection.sendUTF(data);
+                        var outjsonobj={"command":"DATA","value":String(data)}
+                        connection.sendUTF(JSON.stringify(outjsonobj));    
+                    });
+    
+                    process.stderr.on('data', function (data) {    
+                        console.log('stderr: ' + data); 
+                        process = undefined; 
+                        clearTimeout(timeout);  
+                    });
+                        
+                    process.on('close', function (code) {    
+                        console.log('Child process exit with code: ' + code);
+                        process = undefined;
+                        clearTimeout(timeout);
+                        var outjsonobj={"command":"STOP","value":" "}
+                        connection.sendUTF(JSON.stringify(outjsonobj)); 
+                    });
+    
+                    console.log('Child Process');
+        
                     }
-                    
-                }, timeoutms);
-
-                process.stdout.on('data', function (data) {
-                    console.log('stdout: ' + data); 
-                    //connection.sendUTF(data);
-                    var outjsonobj={"command":"DATA","value":String(data)}
-                    connection.sendUTF(JSON.stringify(outjsonobj));    
-                });
-
-                process.stderr.on('data', function (data) {    
-                    console.log('stderr: ' + data); 
-                    process = undefined; 
-                    clearTimeout(timeout);  
-                });
-                    
-                process.on('close', function (code) {    
-                    console.log('Child process exit with code: ' + code);
-                    process = undefined;
+                    break;
+                case 'STOP':
+                  // code block
+                    if(process != undefined){               
+                    // process.stdin.end();
+                    //process.stdout.end();
+                    process.kill('SIGINT');
                     clearTimeout(timeout);
-                    var outjsonobj={"command":"STOP","value":" "}
-                    connection.sendUTF(JSON.stringify(outjsonobj)); 
-                });
-
-                console.log('Child Process');
-
-            }
-            else if(injsonobj.command === 'STOP'  && process != undefined){               
-               // process.stdin.end();
-                //process.stdout.end();
-                process.kill('SIGINT');
-                clearTimeout(timeout);
-                process = undefined                                
-            }
-            else if(injsonobj.command === 'SAVE'){
+                    process = undefined 
+                    }
+                    break;
+                case 'SAVE':
+                  // code block
+                    var sql = "INSERT INTO dumps.mtr_save (`name`, `data`) VALUES(?,?)";  
                 
-                var sql = "INSERT INTO dumps.mtr_save (`name`, `data`) VALUES(?,?)";  
-               
-                var today = new Date();
-                var date = today.getFullYear()+'-'+(today.getMonth()+1)+'-'+today.getDate();
-                var time = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
-                var dateTime = date+' '+time;
-                mydb.query(sql,[dateTime,JSON.stringify(injsonobj.value)], function (err, result) {
-                    if (err) throw err;
-                    console.log("Number of records inserted: " + result.affectedRows);    
-                });               
+                    var today = new Date();
+                    var date = today.getFullYear()+'-'+(today.getMonth()+1)+'-'+today.getDate();
+                    var time = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
+                    var name = date+' '+time+' '+injsonobj.url;
+                    mydb.query(sql,[name,JSON.stringify(injsonobj.value)], function (err, result) {
+                        if (err) throw err;
+                        console.log("Number of records inserted: " + result.affectedRows);    
+                    });
+        
+                    break;
+                case 'LOAD_DATA':
+                // code block
+                //SELECT * FROM dumps.mtr_save ORDER BY id DESC LIMIT 0,3;
+                //SELECT data FROM dumps.mtr_save ORDER BY id DESC LIMIT 1;
+                //SELECT data FROM dumps.mtr_save where name="2019-5-11 19:27:15 www.yahoo.com";
+                    // var sql = "SELECT data FROM dumps.mtr_save ORDER BY id DESC LIMIT 1";  
+                    var sql = "SELECT data FROM dumps.mtr_save where name="+ JSON.stringify(injsonobj.value) ;
+                    
+                    mydb.query(sql,function (err, result) {
+                        if (err) throw err;
+                        console.log("LOAD_DATA result: ",result[0].data);
+                        var outjsonobj={"command":"LOAD_DATA","value":result[0].data}
+                        connection.sendUTF(JSON.stringify(outjsonobj)); 
+                        // console.log("No of Rows: ",result.affectedRows);
+                        // var outjsonobj={"command":"LOAD_DATA","value":result}
+                        // connection.sendUTF(JSON.stringify(outjsonobj)); 
+                              
+                    });
+        
+                    break;
+                case 'LOAD_HISTORY':
+                // code block
+                //SELECT * FROM dumps.mtr_save ORDER BY id DESC LIMIT 0,3;
+                //SELECT data FROM dumps.mtr_save ORDER BY id DESC LIMIT 1;
+                    var nameArray=[];
+                    var sql = "SELECT name FROM dumps.mtr_save ORDER BY id DESC LIMIT 20";  
                 
-            }             
+                    
+                    mydb.query(sql,function (err, result) {
+                        if (err) throw err;
+                        Object.keys(result).forEach(function(key) {
+                            // console.log("KEY:",key);
+                            var row = result[key];  
+                            nameArray.push(row.name);                         
+                            
+                        });
+                        console.log(nameArray);
+                        var outjsonobj={"command":"LOAD_HISTORY","value":JSON.stringify(nameArray)}
+                        connection.sendUTF(JSON.stringify(outjsonobj)); 
+                        
+                                
+                    });
+        
+                    break;
+                default:
+                  // code block
+              }
+
         }
+//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
         else if (message.type === 'binary') {
             console.log('Received Binary Message of ' + message.binaryData.length + ' bytes');
             connection.sendBytes(message.binaryData);
         }
+//>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
     });
     connection.on('close', function(reasonCode, description) {

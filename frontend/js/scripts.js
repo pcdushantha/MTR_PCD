@@ -6,7 +6,12 @@
     var linkNames;
     var status = "STOPPED";
     var displayArray =[];
-    var displayTable = document.getElementById("displayTable");
+    var compareArray=[];
+    var nameArray=[];
+    var currentTable = document.getElementById("currentTable");
+    var compareTable = document.getElementById("compareTable");
+    var savedTable = document.getElementById("savedTable");
+
     var ws = new WebSocket("ws://127.0.0.1:8888",'echo-protocol');
      
     ws.onopen = function() {
@@ -15,51 +20,101 @@
       //  ws.binaryType = "blob";
       //  ws.send('START');
       //  alert("Message is sent...");
+      //>>>>>>>>>>>>>>>>>>>>>>>>>>>LOAD TEST>>>>>>>>>>>>>>>>
+      // var jsonobj={"command":"LOAD_DATA","value":""}            
+      // ws.send(JSON.stringify(jsonobj));
+
+      var jsonobj={"command":"LOAD_HISTORY","value":""}            
+      ws.send(JSON.stringify(jsonobj));
+      //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     };
      
     ws.onmessage = function (evt) { 
       status = "RUNNING";
       // var received_msg = evt.data;
       // console.log(received_msg);
-       //alert("Message is received...");       
-       //received_msg.trim();
+       
+      //received_msg.trim();
       var injsonobj = JSON.parse(evt.data);
-      if(injsonobj.command === "STOP"){
-         status = "STOPPED"; 
-      }
-      else if(injsonobj.command === "START_IP"){
-         status = "STOPPED"; 
-         //console.log("IP ADDRESSES:", injsonobj.value)
-         ipAddresses=injsonobj.value;
-         console.log("IP ADDRESSES:", ipAddresses);
-      }
-      else if(injsonobj.command === "START_LINK"){
-         status = "STOPPED"; 
-         //console.log("IP ADDRESSES:", injsonobj.value)
-         linkNames=injsonobj.value;
-         console.log("LINK NAMES:", linkNames);
-      }
-      else if(injsonobj.command === "TIMEOUT"){
-         alert("!! TIMEOUT !!");
-      }
-      else if(injsonobj.command === "DATA"){
-         var data = injsonobj.value;
-         console.log(data);
-         var webSocketArray = data.split("\n");
-         var datalength = webSocketArray.length;
-         // console.log("Size of received data lines: ", datalength-1 );
-         for(var i=0; i<datalength; i++ ){
+      switch(injsonobj.command){
+         case "STOP":
+            status = "STOPPED";
+            break;
+         case "START_IP":
+            status = "STOPPED"; 
+            //console.log("IP ADDRESSES:", injsonobj.value)
+            ipAddresses=injsonobj.value;
+            console.log("IP ADDRESSES:", ipAddresses);
+            break;
+         case "START_LINK":
+            status = "STOPPED"; 
+            //console.log("IP ADDRESSES:", injsonobj.value)
+            linkNames=injsonobj.value;
+            console.log("LINK NAMES:", linkNames);
+            break;
+         case "DATA":
+            var data = injsonobj.value;
+            console.log(data);
+            var webSocketArray = data.split("\n");
+            var datalength = webSocketArray.length;
+            
+            for(var i=0; i<datalength; i++ ){
 
-            var recvArray= webSocketArray[i].split(" ");
-            recvArray[0]= parseInt(recvArray[0]);
-            updateTable(recvArray);
+               var recvArray= webSocketArray[i].split(" ");
+               recvArray[0]= parseInt(recvArray[0]);
+               updateTable(recvArray);
+            }       
+            break;
+         case "TIMEOUT":
+            alert("!! TIMEOUT !!");
+            break;
+         case "LOAD_DATA":
+            status = "STOPPED";
+            // console.log("TYPE OF LOAD DATA:", typeof(injsonobj.value));
+            compareArray = JSON.parse(injsonobj.value);
+            var rowCount=compareTable.rows.length;
+            // console.log('currentTable.length :', rowCount);
+            for (var i = 1; i < rowCount; i++) {
+               // console.log('delete row :', i);
+               compareTable.deleteRow(1);
+            }  
+            for(var i=0;i< compareArray.length;i++){
+               // console.log("LOAD DATA:", compareArray[i]);
+               insertRowTable(compareArray[i],i,compareTable);
+            }
+            break;
+         case "LOAD_HISTORY":
+            status = "STOPPED";
+            // console.log("TYPE OF HISTORY DATA:", typeof(injsonobj.value));
+            nameArray = JSON.parse(injsonobj.value);
+            for(var i=0;i< nameArray.length;i++){
+               // console.log("LOAD DATA:", compareArray[i]);
+               var row = savedTable.insertRow(i+1);
+               var cell1 = row.insertCell(0);
+               var rowName= "row"+String(i+1);
+               // cell1.innerHTML = "<span id="+"'"+rowName+"'"+ "style='color:#E74C3C;font-weight:bold'  >" + nameArray[i] +"</span>" ;
+               cell1.innerHTML = nameArray[i] ;
+            }
+            document.querySelectorAll('#savedTable td')
+            .forEach(e => e.addEventListener("click", function() {
+               // Here, `this` refers to the element the event was hooked on
+               console.log("clicked")
+               document.querySelectorAll('#savedTable td')
+               .forEach(e => function() {
+                  // Here, `this` refers to the element the event was hooked on
+                   //console.log("All")
+                  
+                   e.style.backgroundColor = 'white';
+               }());
+               
+               e.style.backgroundColor = 'green';
+               var jsonobj={"command":"LOAD_DATA","value":e.innerHTML}            
+               ws.send(JSON.stringify(jsonobj));
+            }));
 
-         }
-         
-         // console.log(displayArray);
+            break;
+
       }
-      
-
     };
      
     ws.onclose = function() { 
@@ -77,11 +132,11 @@ function ServiceStart() {
    if(status === "STOPPED"){
    
       displayArray =[];
-      var rowCount=displayTable.rows.length;
-      // console.log('displayTable.length :', rowCount);
+      var rowCount=currentTable.rows.length;
+      // console.log('currentTable.length :', rowCount);
       for (var i = 1; i < rowCount; i++) {
          // console.log('delete row :', i);
-         displayTable.deleteRow(1);
+         currentTable.deleteRow(1);
       }  
       
       var url = document.getElementById("url").value;
@@ -95,6 +150,7 @@ function ServiceStart() {
          alert("Please enter URL"); 
       }   
       else{
+         
          var jsonobj={"command":"START","value":String(url)}            
          ws.send(JSON.stringify(jsonobj));
       }
@@ -122,7 +178,7 @@ function ServiceStart() {
       alert("Server not available !"); 
    } 
    else{
-      var jsonobj={"command":"SAVE","value":displayArray}            
+      var jsonobj={"command":"SAVE","value":displayArray,"url":document.getElementById("url").value}            
       ws.send(JSON.stringify(jsonobj));
    } 
      
@@ -131,6 +187,7 @@ function ServiceStart() {
  document.getElementById("start_button").onclick = ServiceStart;
  document.getElementById("stop_button").onclick = ServiceStop;
  document.getElementById("save_button").onclick = SavetoDB;
+//  savedTable.cells.addEventListener("click", function(){ alert("Hello World!"); });
 
  function updateTable(recvArray){
   // console.log(recvArray);
@@ -140,31 +197,31 @@ function ServiceStart() {
 
       if(displayArray[index][0] === recvArray[0]){
          displayArray.splice(index,1,recvArray);
-         displayTable.deleteRow(index+1);
-         insertRowTable(recvArray,index,displayTable);
+         currentTable.deleteRow(index+1);
+         insertRowTable(recvArray,index,currentTable);
          break;
       }
       else if(displayArray[index][0] > recvArray[0]){
          displayArray.splice(index,0,recvArray);
-         insertRowTable(recvArray,index,displayTable);
+         insertRowTable(recvArray,index,currentTable);
          break;
       }
    }
    if(recvArray[0] ==1 && displayArray[0] === undefined ){
       displayArray.push(recvArray);
-      insertRowTable(recvArray,0,displayTable)
+      insertRowTable(recvArray,0,currentTable)
 
    }
    else if(recvArray[0] > displayArray[displayArray.length-1][0]){
       displayArray.push(recvArray);
-      insertRowTable(recvArray,displayArray.length-1,displayTable)
+      insertRowTable(recvArray,displayArray.length-1,currentTable)
    }
 
  }
 
- function insertRowTable(recvArray,index,displayTable){
+ function insertRowTable(recvArray,index,table){
 
-   var row = displayTable.insertRow(index+1);
+   var row = table.insertRow(index+1);
    var cell1 = row.insertCell(0);
    var cell2 = row.insertCell(1);
    var cell3 = row.insertCell(2);

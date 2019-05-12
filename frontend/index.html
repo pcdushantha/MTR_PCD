@@ -11,6 +11,13 @@
   <link rel="stylesheet" href="css/styles.css?v=1.0">
 
   <style>
+      * {
+        box-sizing: border-box;
+    }
+    html, body {
+      height: 100%;
+      width: 100%;
+    }
     table, th, td {
         border: 1px solid black;
         }
@@ -35,12 +42,57 @@
     #save_button{
         background-color: rgb(42, 85, 226);
     }
+    .compare_table {
+        /* margin: auto;
+        width: 60%;
+        border: 3px solid #73AD21;
+        padding: 10px; */
+        margin: auto;
+        float: left;
+        width: 40%;
+        border: 3px solid #73AD21;
+        /* padding: 10px; */
+        /* display: inline-table; */
+        
+
+    }
+    .current_table {
+        margin: auto;       
+        float: left;
+        width: 40%;
+        border: 3px solid #73AD21;
+        /* padding: 10px; */
+        /* display: inline-table; */
+        
+
+    }
+    .saved_table {
+        margin: auto;
+        float: left;
+        width: 20%;
+        border: 3px solid green;
+        /* padding: 10px; */
+        /* display: inline-table; */
+        
+    }
+    /* .output_container {
+        height: 100%;
+        width: 100%;
+        display: flex;
+    } */
+    .center {
+        margin: auto;
+        width: 100%;
+        border: 3px solid green;
+        /* padding: 10px; */
+    }
+        
     </style>
 
 </head>
 
 <body>
-    <div class="input">
+    <div class="input_container">
             <form>
                 URL:<br>
                 <input type="text" id="url"><br>                
@@ -50,8 +102,9 @@
             <button class="button" id="save_button">SAVE</button>
 
     </div>
-    <div class="output">
-            <table id="displayTable">
+    <div class="output_container">
+        <div class="current_table" >
+            <table class="center" id="currentTable">
                <!-- <colgroup>
                     <col span="2" style="background-color:red">
                     <col style="background-color:yellow">
@@ -70,7 +123,46 @@
                 </tr>
                 
             </table>
-                      
+        </div> 
+        <div class="saved_table" >
+            <table class="center" id="savedTable">
+            <!-- <colgroup>
+                    <col span="2" style="background-color:red">
+                    <col style="background-color:yellow">
+                </colgroup> -->
+            
+                <!--<pos> <host> <loss%> <rcvd pckts> <sent pckts> <best> <avg> <worst>-->
+                <tr>
+                    <th>Test Name</th>
+                    
+                </tr>
+                                
+            </table>
+
+        </div>      
+        <div class="compare_table" >
+            <table class="center" id="compareTable">
+            <!-- <colgroup>
+                    <col span="2" style="background-color:red">
+                    <col style="background-color:yellow">
+                </colgroup> -->
+            
+                <!--<pos> <host> <loss%> <rcvd pckts> <sent pckts> <best> <avg> <worst>-->
+                <tr>
+                    <th>Pos</th>
+                    <th>Host</th>
+                    <th>Loss%</th>
+                    <th>Received pckts</th>
+                    <th>Sent pckts</th>
+                    <th>Best</th>
+                    <th>Avg</th>
+                    <th>Worst</th>
+                </tr>
+                
+            </table>
+
+        </div>
+                          
     </div>
   <script src="js/scripts.js"></script>
 </body>
